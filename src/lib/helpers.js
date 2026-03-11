@@ -1,3 +1,5 @@
+import util from "node:util";
+
 /**
  * @param {string} msg
  */
@@ -42,4 +44,12 @@ export function formatDate(date) {
 
     // 'en-CA' (English Canada) conveniently defaults to YYYY-MM-DD
     return dtf.format(date).replace(',', '');
+}
+
+/**
+ * @param {object} obj
+ * @returns {string}
+ */
+export function prettyPrintObject(obj) {
+    return util.inspect(obj, { depth: null })
 }

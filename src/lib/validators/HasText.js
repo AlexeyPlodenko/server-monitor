@@ -16,9 +16,17 @@ export default class HasText extends AbstractValidator {
     }
 
     /**
+     * @returns {Promise<string>}
+     */
+    async getValue$() {
+        return this.getRequest().getResponseText$();
+    }
+
+    /**
      * @returns {Promise<boolean>}
      */
     async isValid$() {
-        return (await this.request.getResponseText$()).includes(this.expectedText);
+        const text = await this.getValue$();
+        return text.includes(this.expectedText);
     }
 }

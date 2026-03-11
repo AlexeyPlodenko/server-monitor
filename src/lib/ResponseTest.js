@@ -1,4 +1,4 @@
-import {d} from "./helpers.js";
+import {d, prettyPrintObject} from "./helpers.js";
 import ValidationFailed from "./errors/ValidationFailed.js";
 
 export default class ResponseTest {
@@ -22,8 +22,10 @@ export default class ResponseTest {
             validator.setRequest(resp);
 
             if (!await validator.isValid$()) {
+                const validatorStr = prettyPrintObject(validator);
+                const invalidRes = await validator.getValue$();
                 throw new ValidationFailed(
-                    `The test "${this.#test.name}" ${validator} has failed for the URL "${this.#test.url}".`
+                    `The test "${this.#test.name} ${validatorStr}" has failed for the URL "${this.#test.url}". Got "${invalidRes}".`
                 );
             }
         }

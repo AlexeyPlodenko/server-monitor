@@ -2,23 +2,31 @@ import AbstractValidator from "./AbstractValidator.js";
 
 export default class IsStatusCode extends AbstractValidator {
     /**
-     * @type {number}
+     * @type {number[]}
      */
     expectedStatusCode;
 
     /**
-     * @param {number} expectedStatusCode
+     * @param {number|number[]} expectedStatusCode
      */
     constructor(expectedStatusCode) {
         super();
 
-        this.expectedStatusCode = expectedStatusCode;
+        this.expectedStatusCode = Array.isArray(expectedStatusCode) ? expectedStatusCode : [expectedStatusCode];
+    }
+
+    /**
+     * @returns {Promise<number>}
+     */
+    async getValue$() {
+        return this.getRequest().getResponseStatusCode$();
     }
 
     /**
      * @returns {Promise<boolean>}
      */
     async isValid$() {
-        return await this.request.getResponseStatusCode$() === this.expectedStatusCode;
+        const statusCode = await this.getValue$();
+        return this.expectedStatusCode.includes(statusCode);
     }
 }

@@ -1,3 +1,7 @@
 {
-    "type": "module"
+    "type": "module",
+    "dependencies": {
+        "@slack/web-api": "^7.14.1",
+        "@slack/webhook": "^7.0.4"
+    }
 }

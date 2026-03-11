@@ -17,9 +17,17 @@ export default class HasLoadedWithinMs extends AbstractValidator {
     }
 
     /**
+     * @returns {Promise<number>}
+     */
+    async getValue$() {
+        return this.getRequest().getLoadTimeMs$();
+    }
+
+    /**
      * @returns {Promise<boolean>}
      */
     async isValid$() {
-        return await this.request.getLoadTimeMs$() < this.expectedLoadTimeMs;
+        const loadedMs = await this.getValue$();
+        return loadedMs < this.expectedLoadTimeMs;
     }
 }
