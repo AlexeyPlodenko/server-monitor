@@ -44,7 +44,7 @@ export default class JsFetch {
     async load$() {
         if (!this.#response) {
             this.#startTime = Date.now();
-            this.#response = await fetch(this.#url);
+            this.#response = await fetch(this.#url, { redirect: 'manual' });
             this.#endTime = Date.now();
         }
 

@@ -2,6 +2,7 @@ import { IncomingWebhook } from '@slack/webhook';
 import {d, info, now} from "./helpers.js";
 import ResponseTest from "./ResponseTest.js";
 import ValidationFailed from "./errors/ValidationFailed.js";
+import {config} from "../config.js";
 
 export default class Pinger {
     /**
@@ -18,6 +19,11 @@ export default class Pinger {
      * @type {Map<string, IncomingWebhook>}
      */
     #slackWebhooks = new Map();
+
+    /**
+     * @type {Map<string, {messages: string[], timer: NodeJS.Timeout}>}
+     */
+    #slackBuffers = new Map();
 
     /**
      * @param {Test[]} tests
@@ -52,7 +58,9 @@ export default class Pinger {
                 if (err instanceof ValidationFailed) {
                     info(err.message);
 
-                    await this.#getWebhook(test.slackWebhookUrl).send({ text: err.message });
+                    if (config.sendSlackMessages) {
+                        this.#bufferSlackMessage(test.slackWebhookUrl, err.message);
+                    }
                 } else {
                     throw err; // unknown error, rethrow it
                 }
@@ -60,6 +68,33 @@ export default class Pinger {
         }, 99);
 
         return this;
+    }
+
+    /**
+     * @param {string} url
+     * @param {string} message
+     */
+    #bufferSlackMessage(url, message) {
+        if (!this.#slackBuffers.has(url)) {
+            this.#slackBuffers.set(url, { messages: [], timer: null });
+        }
+
+        const buffer = this.#slackBuffers.get(url);
+        buffer.messages.push(message);
+
+        if (!buffer.timer) {
+            buffer.timer = setTimeout(async () => {
+                const text = buffer.messages.join('\n');
+                buffer.messages = [];
+                buffer.timer = null;
+
+                try {
+                    await this.#getWebhook(url).send({ text });
+                } catch (err) {
+                    info(`Failed to send slack notification: ${err.message}`);
+                }
+            }, 5000);
+        }
     }
 
     /**
@@ -97,5 +132,31 @@ export default class Pinger {
         }
 
         return null;
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async cleanup() {
+        info('Cleaning up and sending remaining slack messages...');
+
+        const promises = [];
+        for (const [url, buffer] of this.#slackBuffers.entries()) {
+            if (buffer.timer) {
+                clearTimeout(buffer.timer);
+            }
+
+            if (buffer.messages.length > 0) {
+                const text = buffer.messages.join('\n');
+                buffer.messages = []; // Clear the messages after queuing them to send
+                promises.push(
+                    this.#getWebhook(url).send({ text })
+                        .catch(err => info(`Failed to send slack notification during cleanup: ${err.message}`))
+                );
+            }
+        }
+
+        await Promise.all(promises);
+        info('Cleanup finished.');
     }
 }
