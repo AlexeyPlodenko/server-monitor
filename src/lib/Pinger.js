@@ -26,6 +26,16 @@ export default class Pinger {
     #slackBuffers = new Map();
 
     /**
+     * @type {Map<string, number>}
+     */
+    #sentMessages = new Map();
+
+    /**
+     * @type {NodeJS.Timeout}
+     */
+    #cleanupInterval;
+
+    /**
      * @param {Test[]} tests
      * @returns {Pinger}
      */
@@ -67,7 +77,19 @@ export default class Pinger {
             }
         }, 99);
 
+        this.#cleanupInterval = setInterval(() => this.#cleanupSentMessages(), 3600000); // 1 hour
+
         return this;
+    }
+
+    #cleanupSentMessages() {
+        const now = Date.now();
+        info('Cleaning up old sent messages...');
+        for (const [key, timestamp] of this.#sentMessages.entries()) {
+            if (now - timestamp >= 3600000) { // 1 hour
+                this.#sentMessages.delete(key);
+            }
+        }
     }
 
     /**
@@ -75,6 +97,16 @@ export default class Pinger {
      * @param {string} message
      */
     #bufferSlackMessage(url, message) {
+        const key = `${url}|${message}`;
+        const timestamp = Date.now();
+        if (this.#sentMessages.has(key)) {
+            const lastSent = this.#sentMessages.get(key);
+            if (timestamp - lastSent < 3600000) { // 1 hour
+                return;
+            }
+        }
+        this.#sentMessages.set(key, timestamp);
+
         if (!this.#slackBuffers.has(url)) {
             this.#slackBuffers.set(url, { messages: [], timer: null });
         }
@@ -138,6 +170,7 @@ export default class Pinger {
      * @returns {Promise<void>}
      */
     async cleanup() {
+        clearInterval(this.#cleanupInterval);
         info('Cleaning up and sending remaining slack messages...');
 
         const promises = [];
