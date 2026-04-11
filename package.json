@@ -1,7 +1,14 @@
 {
     "type": "module",
+    "scripts": {
+        "start": "node src/pinger.js"
+    },
     "dependencies": {
-        "@slack/web-api": "^7.14.1",
-        "@slack/webhook": "^7.0.4"
+        "@slack/web-api": "7.14.1",
+        "@slack/webhook": "7.0.7"
+    },
+    "pnpm": {
+        "blockExoticSubdeps": true,
+        "minimumReleaseAge": 10080
     }
 }

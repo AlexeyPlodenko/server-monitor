@@ -36,6 +36,11 @@ export default class Pinger {
     #cleanupInterval;
 
     /**
+     * @type {number}
+     */
+    #startTime;
+
+    /**
      * @param {Test[]} tests
      * @returns {Pinger}
      */
@@ -49,7 +54,13 @@ export default class Pinger {
      * @returns {Pinger}
      */
     start() {
+        this.#startTime = Date.now();
+
         setInterval(async () => {
+            if (Date.now() - this.#startTime < (config.cooldownMs || 0)) {
+                return;
+            }
+
             const test = this.#getNextTest();
             if (!test) {
                 // info('No tests to run.');
