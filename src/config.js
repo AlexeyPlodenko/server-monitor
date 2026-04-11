@@ -1,4 +1,4 @@
 export const config = {
     sendSlackMessages: false,
-    cooldownMs: 5000
+    cooldownMs: 1000
 };

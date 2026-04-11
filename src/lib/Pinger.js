@@ -74,7 +74,7 @@ export default class Pinger {
 
             try {
                 await respTest.execute$();
-                info(`The test "${test.name}" passed.`);
+                info(`Test "${test.name}" passed.`);
             } catch (err) {
                 if (err instanceof ValidationFailed) {
                     info(err.message);

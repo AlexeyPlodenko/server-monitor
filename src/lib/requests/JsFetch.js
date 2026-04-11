@@ -1,4 +1,5 @@
 import {d} from "../helpers.js";
+import { request, fetch, Agent, setGlobalDispatcher } from 'undici';
 
 export default class JsFetch {
     /**
@@ -39,13 +40,29 @@ export default class JsFetch {
     }
 
     /**
+     * @returns {string}
+     */
+    getUrl() {
+        return this.#url;
+    }
+
+    /**
      * @returns {Promise<Response>}
      */
     async load$() {
         if (!this.#response) {
             this.#startTime = Date.now();
-            this.#response = await fetch(this.#url, { redirect: 'manual' });
+
+            this.#response = await request(this.#url, {
+                method: 'GET',
+                    headers: {
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
+                }
+            });
+
             this.#endTime = Date.now();
+
+// @TODO add max loading time
         }
 
         return this.#response;
@@ -64,7 +81,15 @@ export default class JsFetch {
      */
     async getResponseStatusCode$() {
         const resp = await this.load$();
-        return resp.status;
+        return resp.statusCode || resp.status;
+    }
+
+    /**
+     * @returns {Promise<Object>}
+     */
+    async getResponseHeaders$() {
+        const resp = await this.load$();
+        return resp.headers;
     }
 
     /**
@@ -75,7 +100,11 @@ export default class JsFetch {
             const resp = await this.load$();
 
             // Clone to keep the original response body intact for other potential uses
-            this.#responseText = await resp.clone().text();
+            if (resp.body) {
+                this.#responseText = await resp.body.text();
+            } else if (typeof resp.text === 'function') {
+                this.#responseText = await resp.text();
+            }
         }
         return this.#responseText;
     }
