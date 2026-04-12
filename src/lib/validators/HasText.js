@@ -29,4 +29,9 @@ export default class HasText extends AbstractValidator {
         const text = await this.getValue$();
         return text.includes(this.expectedText);
     }
+
+    async errorMessage$() {
+        const text = await this.getValue$();
+        return `Missing text "${this.expectedText}" in response.`
+    }
 }

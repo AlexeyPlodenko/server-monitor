@@ -29,4 +29,9 @@ export default class IsStatusCode extends AbstractValidator {
         const statusCode = await this.getValue$();
         return this.expectedStatusCode.includes(statusCode);
     }
+
+    async errorMessage$() {
+        const statusCode = await this.getValue$();
+        return `Invalid HTTP response status code. Expected: ${this.expectedStatusCode.join(', ')}. Got: ${statusCode}.`;
+    }
 }

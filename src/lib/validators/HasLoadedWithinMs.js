@@ -30,4 +30,9 @@ export default class HasLoadedWithinMs extends AbstractValidator {
         const loadedMs = await this.getValue$();
         return loadedMs < this.expectedLoadTimeMs;
     }
+
+    async errorMessage$() {
+        const loadedMs = await this.getValue$();
+        return `Failed to load within ${this.expectedLoadTimeMs}ms. Loaded in ${loadedMs}ms.`
+    }
 }

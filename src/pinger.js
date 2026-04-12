@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Pinger from "./lib/Pinger.js";
 import {d} from "./lib/helpers.js";
+import AbstractValidator from "./lib/validators/AbstractValidator.js";
 
 /**
  * @typedef {{name: string, url: string, runEveryMs: number, request: JsFetch, validators: AbstractValidator[]}} Test

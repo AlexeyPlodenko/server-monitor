@@ -33,17 +33,17 @@ export default class JsFetch {
     #endTime = null;
 
     /**
-     * @param {string} url
-     */
-    constructor(url) {
-        this.#url = url;
-    }
-
-    /**
      * @returns {string}
      */
     getUrl() {
         return this.#url;
+    }
+
+    /**
+     * @param {string} url
+     */
+    constructor(url) {
+        this.#url = url;
     }
 
     /**
@@ -55,7 +55,7 @@ export default class JsFetch {
 
             this.#response = await request(this.#url, {
                 method: 'GET',
-                    headers: {
+                headers: {
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
                 }
             });
@@ -81,7 +81,7 @@ export default class JsFetch {
      */
     async getResponseStatusCode$() {
         const resp = await this.load$();
-        return resp.statusCode || resp.status;
+        return resp.statusCode;
     }
 
     /**
@@ -100,6 +100,7 @@ export default class JsFetch {
             const resp = await this.load$();
 
             // Clone to keep the original response body intact for other potential uses
+            // undici request body is a stream, so we might need to handle it differently if it was fetch
             if (resp.body) {
                 this.#responseText = await resp.body.text();
             } else if (typeof resp.text === 'function') {

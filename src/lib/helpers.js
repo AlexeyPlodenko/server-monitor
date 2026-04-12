@@ -18,7 +18,7 @@ export function log(...args) {
  * @param {...*} args
  */
 export function d(...args) {
-    console.log('DUMP', ...args);
+    console.trace('DUMP', ...args);
     process.exit(1);
 }
 

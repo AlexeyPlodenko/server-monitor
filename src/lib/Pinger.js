@@ -3,6 +3,7 @@ import {d, info, now} from "./helpers.js";
 import ResponseTest from "./ResponseTest.js";
 import ValidationFailed from "./errors/ValidationFailed.js";
 import {config} from "../config.js";
+import chalk from "chalk";
 
 export default class Pinger {
     /**
@@ -80,7 +81,7 @@ export default class Pinger {
                 return;
             }
 
-            info(`Executing test "${test.name}".`);
+            info(chalk.blue(`Executing test "${test.name}".`));
             test.lastCheckTime = now();
             this.#lastRunByDomain.set(domain, Date.now());
 
@@ -88,10 +89,10 @@ export default class Pinger {
 
             try {
                 await respTest.execute$();
-                info(`Test "${test.name}" passed.`);
+                info(chalk.green(`Test "${test.name}" passed.`));
             } catch (err) {
                 if (err instanceof ValidationFailed) {
-                    info(err.message);
+                    info(chalk.red(err.message));
 
                     if (config.sendSlackMessages) {
                         this.#bufferSlackMessage(test.slackWebhookUrl, err.message);

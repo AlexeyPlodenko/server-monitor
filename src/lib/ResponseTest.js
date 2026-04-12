@@ -33,7 +33,7 @@ export default class ResponseTest {
                 //     `Test "${this.#test.name} ${validatorStr}" has failed for the URL "${this.#test.url}". Got "${invalidRes}".`
                 // );
                 throw new ValidationFailed(
-                    `Test "${this.#test.name}" has failed for the URL "${this.#test.url}".`
+                    `Test "${this.#test.name}" failed for the URL "${this.#test.url}". ${await validator.errorMessage$()}`
                 );
             }
         }

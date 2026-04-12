@@ -15,4 +15,8 @@ export default class NotEmpty extends AbstractValidator {
         const text = await this.getValue$();
         return text !== '';
     }
+
+    async errorMessage$() {
+        return 'Body is empty.';
+    }
 }

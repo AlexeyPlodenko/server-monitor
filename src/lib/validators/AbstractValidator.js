@@ -5,6 +5,32 @@ export default class AbstractValidator {
     #request;
 
     /**
+     * @type {string}
+     */
+    #testName;
+
+    /**
+     * @type {string}
+     */
+    #testUrl;
+
+    setTestName(name) {
+        this.#testName = name;
+    }
+
+    getTestName() {
+        return this.#testName;
+    }
+
+    setTestUrl(url) {
+        this.#testUrl = url;
+    }
+
+    getTestUrl() {
+        return this.#testUrl;
+    }
+
+    /**
      * @param {JsFetch} request
      * @returns {AbstractValidator}
      */
@@ -32,6 +58,10 @@ export default class AbstractValidator {
      * @returns {Promise<boolean>}
      */
     async isValid$() {
+        throw new Error('Not implemented!');
+    }
+
+    async errorMessage$() {
         throw new Error('Not implemented!');
     }
 }
