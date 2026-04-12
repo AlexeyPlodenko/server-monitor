@@ -22,16 +22,6 @@ export default class ResponseTest {
             validator.setRequest(resp);
 
             if (!await validator.isValid$()) {
-                // const validatorStr = prettyPrintObject(validator);
-                //
-                // let invalidRes = String(await validator.getValue$());
-                // if (invalidRes.length > 30) {
-                //     invalidRes = invalidRes.slice(0, 27) + '...';
-                // }
-                //
-                // throw new ValidationFailed(
-                //     `Test "${this.#test.name} ${validatorStr}" has failed for the URL "${this.#test.url}". Got "${invalidRes}".`
-                // );
                 throw new ValidationFailed(
                     `Test "${this.#test.name}" failed for the URL "${this.#test.url}". ${await validator.errorMessage$()}`
                 );

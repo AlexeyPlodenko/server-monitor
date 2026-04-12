@@ -2,6 +2,19 @@
 
 A standalone script that monitors web services availability.
 
+## Startup
+
+1. Create `/config.js` file:
+    ```javascript
+    export const config = {
+        sendSlackMessages: true,
+        cooldownMs: 1000,
+        sameDomainDelayMs: 1000
+    };
+    ```
+2. Create the tests in the `/tests/` directory.
+3. Run the script `pnpm run start`
+
 ## Tests
 
 Create a `.js` file in the `/tests/` directory with the following structure:

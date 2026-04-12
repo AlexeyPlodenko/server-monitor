@@ -1,8 +1,8 @@
 import { IncomingWebhook } from '@slack/webhook';
-import {d, info, now} from "./helpers.js";
+import {d, error, info, log, now} from "./helpers.js";
 import ResponseTest from "./ResponseTest.js";
 import ValidationFailed from "./errors/ValidationFailed.js";
-import {config} from "../config.js";
+import {config} from "../../config.js";
 import chalk from "chalk";
 
 export default class Pinger {
@@ -81,7 +81,7 @@ export default class Pinger {
                 return;
             }
 
-            info(chalk.blue(`Executing test "${test.name}".`));
+            info(`Executing test "${test.name}".`);
             test.lastCheckTime = now();
             this.#lastRunByDomain.set(domain, Date.now());
 
@@ -89,16 +89,25 @@ export default class Pinger {
 
             try {
                 await respTest.execute$();
-                info(chalk.green(`Test "${test.name}" passed.`));
+                log(chalk.green(`Test "${test.name}" passed.`));
             } catch (err) {
                 if (err instanceof ValidationFailed) {
-                    info(chalk.red(err.message));
+                    error(err.message);
 
                     if (config.sendSlackMessages) {
                         this.#bufferSlackMessage(test.slackWebhookUrl, err.message);
                     }
                 } else {
-                    throw err; // unknown error, rethrow it
+                    if (err instanceof Error && err.message.includes('getaddrinfo ENOTFOUND')) {
+                        error(err.message);
+
+                        // domain not found
+                        if (config.sendSlackMessages) {
+                            this.#bufferSlackMessage(test.slackWebhookUrl, err.message);
+                        }
+                    } else {
+                        throw err; // unknown error, rethrow it
+                    }
                 }
             }
         }, 99);
@@ -122,43 +131,6 @@ export default class Pinger {
             if (now - timestamp >= 3600000) { // 1 hour
                 this.#lastRunByDomain.delete(domain);
             }
-        }
-    }
-
-    /**
-     * @param {string} url
-     * @param {string} message
-     */
-    #bufferSlackMessage(url, message) {
-        const key = `${url}|${message}`;
-        const timestamp = Date.now();
-        if (this.#sentMessages.has(key)) {
-            const lastSent = this.#sentMessages.get(key);
-            if (timestamp - lastSent < 3600000) { // 1 hour
-                return;
-            }
-        }
-        this.#sentMessages.set(key, timestamp);
-
-        if (!this.#slackBuffers.has(url)) {
-            this.#slackBuffers.set(url, { messages: [], timer: null });
-        }
-
-        const buffer = this.#slackBuffers.get(url);
-        buffer.messages.push(message);
-
-        if (!buffer.timer) {
-            buffer.timer = setTimeout(async () => {
-                const text = buffer.messages.join('\n');
-                buffer.messages = [];
-                buffer.timer = null;
-
-                try {
-                    await this.#getWebhook(url).send({ text });
-                } catch (err) {
-                    info(`Failed to send slack notification: ${err.message}`);
-                }
-            }, 5000);
         }
     }
 
@@ -203,6 +175,69 @@ export default class Pinger {
     }
 
     /**
+     * @param {string} url
+     * @param {string} message
+     */
+    #bufferSlackMessage(url, message) {
+        const key = `${url}|${message}`;
+        const timestamp = Date.now();
+
+        // 1. Deduplication logic (1-hour window per unique message)
+        if (this.#sentMessages.has(key)) {
+            const lastSent = this.#sentMessages.get(key);
+            if (timestamp - lastSent < 3600000) {
+                return;
+            }
+        }
+        this.#sentMessages.set(key, timestamp);
+
+        // 2. Initialize buffer if it doesn't exist
+        if (!this.#slackBuffers.has(url)) {
+            this.#slackBuffers.set(url, { messages: [], timer: null });
+        }
+
+        const buffer = this.#slackBuffers.get(url);
+        buffer.messages.push(message);
+
+        // 3. Debounce Logic:
+        // Reset the timer every time a new message arrives.
+        // This groups "bursts" of errors into a single Slack notification.
+        if (buffer.timer) {
+            clearTimeout(buffer.timer);
+        }
+
+        buffer.timer = setTimeout(() => {
+            this.#flushSlackBuffer(url);
+        }, 5000);
+    }
+
+    /**
+     * Internal helper to actually send the buffered messages.
+     *
+     * @param {string} url
+     */
+    async #flushSlackBuffer(url) {
+        const buffer = this.#slackBuffers.get(url);
+        if (!buffer || buffer.messages.length === 0) return;
+
+        const text = buffer.messages.join('\n');
+
+        // Clear buffer state BEFORE sending to prevent race conditions
+        // if new messages arrive during the network request
+        buffer.messages = [];
+        if (buffer.timer) {
+            clearTimeout(buffer.timer);
+            buffer.timer = null;
+        }
+
+        try {
+            await this.#getWebhook(url).send({ text });
+        } catch (err) {
+            error(`Failed to send Slack notification: ${err.message}`);
+        }
+    }
+
+    /**
      * @returns {Promise<void>}
      */
     async cleanup() {
@@ -210,19 +245,8 @@ export default class Pinger {
         info('Cleaning up and sending remaining slack messages...');
 
         const promises = [];
-        for (const [url, buffer] of this.#slackBuffers.entries()) {
-            if (buffer.timer) {
-                clearTimeout(buffer.timer);
-            }
-
-            if (buffer.messages.length > 0) {
-                const text = buffer.messages.join('\n');
-                buffer.messages = []; // Clear the messages after queuing them to send
-                promises.push(
-                    this.#getWebhook(url).send({ text })
-                        .catch(err => info(`Failed to send slack notification during cleanup: ${err.message}`))
-                );
-            }
+        for (const url of this.#slackBuffers.keys()) {
+            promises.push(this.#flushSlackBuffer(url));
         }
 
         await Promise.all(promises);
