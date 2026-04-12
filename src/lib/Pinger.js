@@ -31,14 +31,19 @@ export default class Pinger {
     #sentMessages = new Map();
 
     /**
-     * @type {NodeJS.Timeout}
+     * @type {number}
      */
     #cleanupInterval;
 
     /**
      * @type {number}
      */
-    #startTime;
+     #startTime;
+
+    /**
+     * @type {Map<string, number>}
+     */
+    #lastRunByDomain = new Map();
 
     /**
      * @param {Test[]} tests
@@ -67,8 +72,17 @@ export default class Pinger {
                 return;
             }
 
+            const domain = new URL(test.url).hostname;
+            const lastRun = this.#lastRunByDomain.get(domain) || 0;
+            const delay = config.sameDomainDelayMs !== undefined ? config.sameDomainDelayMs : 1000;
+
+            if (Date.now() - lastRun < delay) {
+                return;
+            }
+
             info(`Executing test "${test.name}".`);
             test.lastCheckTime = now();
+            this.#lastRunByDomain.set(domain, Date.now());
 
             const respTest = new ResponseTest(test);
 
@@ -88,17 +102,24 @@ export default class Pinger {
             }
         }, 99);
 
-        this.#cleanupInterval = setInterval(() => this.#cleanupSentMessages(), 3600000); // 1 hour
+        this.#cleanupInterval = setInterval(() => this.#periodicCleanup(), 3600000); // 1 hour
 
         return this;
     }
 
-    #cleanupSentMessages() {
+    #periodicCleanup() {
+        info('Performing periodic cleanup...');
+
         const now = Date.now();
-        info('Cleaning up old sent messages...');
         for (const [key, timestamp] of this.#sentMessages.entries()) {
             if (now - timestamp >= 3600000) { // 1 hour
                 this.#sentMessages.delete(key);
+            }
+        }
+
+        for (const [domain, timestamp] of this.#lastRunByDomain.entries()) {
+            if (now - timestamp >= 3600000) { // 1 hour
+                this.#lastRunByDomain.delete(domain);
             }
         }
     }
@@ -156,7 +177,7 @@ export default class Pinger {
      * @returns {Test|null}
      */
     #getNextTest() {
-        if (!this.#tests.length) {
+        if (!this.#tests || !this.#tests.length) {
             return null;
         }
 
@@ -167,11 +188,14 @@ export default class Pinger {
         }
 
         const test = this.#tests[this.#currentTestIx];
+        if (!test) {
+            return null;
+        }
 
         // return the server if it was never pinged or the runEveryMinute time has passed since the last run
         let lastCheckTime = test.lastCheckTime;
         if (!lastCheckTime || Math.floor(new Date() - lastCheckTime) >= test.runEveryMs) {
-            return this.#tests[this.#currentTestIx];
+            return test;
         }
 
         return null;
