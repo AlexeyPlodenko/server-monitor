@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import Pinger from "./lib/Pinger.js";
-import {d} from "./lib/helpers.js";
+import {d, info, error} from "./lib/helpers.js";
 import AbstractValidator from "./lib/validators/AbstractValidator.js";
 
 /**
@@ -11,24 +11,77 @@ import AbstractValidator from "./lib/validators/AbstractValidator.js";
  */
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const tests = [];
 const testsDir = path.resolve(__dirname, '../tests');
-const testFiles = fs.readdirSync(testsDir).filter(file => file.endsWith('.js'));
-for (const file of testFiles) {
-    const module = await import(`file://${path.join(testsDir, file)}`);
-    const testData = module.default || module;
 
-    if (Array.isArray(testData)) {
-        tests.push(...testData);
-    } else {
-        tests.push(testData);
+const testsByFile = new Map();
+const app = new Pinger();
+
+/**
+ * Loads or reloads a specific test file.
+ *
+ * @param {string} filename
+ */
+async function loadTestFile(filename) {
+    const filePath = path.join(testsDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+        testsByFile.delete(filename);
+        return;
+    }
+
+    try {
+        // Use a cache-busting query parameter for ESM imports to allow reloading
+        const fileUrl = pathToFileURL(filePath).href;
+        const module = await import(`${fileUrl}?update=${Date.now()}`);
+        const testData = module.default || module;
+        testsByFile.set(filename, Array.isArray(testData) ? testData : [testData]);
+    } catch (err) {
+        error(`Failed to load test file "${filename}": ${err.message}`);
     }
 }
 
-const app = new Pinger();
-app.setTests(tests);
+/**
+ * Updates the Pinger instance with the current set of tests from all files.
+ */
+function updateAppTests() {
+    const allTests = Array.from(testsByFile.values()).flat();
+    app.setTests(allTests);
+}
+
+/**
+ * Initial load of all tests in the directory.
+ */
+async function loadAllTests() {
+    if (!fs.existsSync(testsDir)) {
+        return;
+    }
+
+    const files = fs.readdirSync(testsDir).filter(file => file.endsWith('.js'));
+    await Promise.all(files.map(file => loadTestFile(file)));
+}
+
+// Initializing the app
+await loadAllTests();
+updateAppTests();
 app.start();
+
+// Monitor tests directory for changes
+let reloadTimeout;
+fs.watch(testsDir, (eventType, filename) => {
+    if (!filename || filename.endsWith('.js')) {
+        clearTimeout(reloadTimeout);
+        reloadTimeout = setTimeout(async () => {
+            if (filename) {
+                info(`Test file change detected: ${filename} (${eventType}). Reloading...`);
+                await loadTestFile(filename);
+            } else {
+                info(`Changes detected in tests directory. Reloading all tests...`);
+                await loadAllTests();
+            }
+            updateAppTests();
+        }, 200);
+    }
+});
 
 ['SIGINT', 'SIGTERM'].forEach(signal => {
     process.on(signal, async () => {
