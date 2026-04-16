@@ -2,7 +2,7 @@
 
 A standalone script that monitors web services availability.
 
-## Startup
+## First run
 
 1. Create `/config.js` file:
     ```javascript
@@ -101,3 +101,12 @@ export const tests = [
     },
 ];
 ```
+
+## Production run
+
+Use `pm2` NPM package to manage your application in the production environment.
+
+1. Install Node.js and NPM on your server
+2. Install pm2 on the server - `npm install pm2@latest -g`
+3. Navigate to the project root and `pm2 start src/pinger.js --name "server-monitor"` to start the app
+4. Schedule a restart every midnight to prevent memory leaks `pm2 restart server-monitor --cron-restart="0 0 * * *"`
