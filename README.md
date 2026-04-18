@@ -12,8 +12,9 @@ A standalone script that monitors web services availability.
         sameDomainDelayMs: 1000
     };
     ```
-2. Create the tests in the `/tests/` directory.
-3. Run the script `pnpm run start`
+2. Create the tests in the `/tests/` directory
+3. Execute `pnpm install` to install NPM packages
+4. Execute `pnpm run start`
 
 ## Tests
 
@@ -106,7 +107,8 @@ export const tests = [
 
 Use `pm2` NPM package to manage your application in the production environment.
 
-1. Install Node.js and NPM on your server
-2. Install pm2 on the server - `npm install pm2@latest -g`
-3. Navigate to the project root and `pm2 start src/pinger.js --name "server-monitor"` to start the app
-4. Schedule a restart every midnight to prevent memory leaks `pm2 restart server-monitor --cron-restart="0 0 * * *"`
+1. Install `Node.js` and `NPM` on your server
+2. Install `pm2` on the server - `npm install pm2@latest -g`
+3. Execute `pnpm install` to install NPM packages
+4. Navigate to the project root and execute `pm2 start ecosystem.config.cjs --env production` to start the app
+5. _Execute `pm2 install pm2-logrotate` to install logrotate module, to prevent excessive log file growth_

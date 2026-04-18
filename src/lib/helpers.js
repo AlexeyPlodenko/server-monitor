@@ -5,14 +5,14 @@ import chalk from "chalk";
  * @param {string} msg
  */
 export function info(msg) {
-    console.log('INFO', chalk.blue(formatDate(now())), chalk.blue(msg));
+    console.log('INFO', chalk.blue(msg));
 }
 
 /**
  * @param {string} msg
  */
 export function error(msg) {
-    console.error('ERROR', chalk.red(formatDate(now())), chalk.red(msg));
+    console.error('ERROR', chalk.red(msg));
 }
 
 /**
