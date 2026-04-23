@@ -61,6 +61,9 @@ export default class AbstractValidator {
         throw new Error('Not implemented!');
     }
 
+    /**
+     * @returns {Promise<string>}
+     */
     async errorMessage$() {
         throw new Error('Not implemented!');
     }

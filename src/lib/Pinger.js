@@ -89,10 +89,10 @@ export default class Pinger {
 
             try {
                 await respTest.execute$();
-                log(chalk.green(`Test "${test.name}" passed.`));
+                info(chalk.green(`Test "${test.name}" passed.`));
             } catch (err) {
                 if (err instanceof ValidationFailed) {
-                    error(err.message);
+                    info(chalk.red(err.message));
 
                     if (config.sendSlackMessages) {
                         this.#bufferSlackMessage(test.slackWebhookUrl, err.message);
