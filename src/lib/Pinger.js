@@ -4,6 +4,7 @@ import ResponseTest from "./ResponseTest.js";
 import ValidationFailed from "./errors/ValidationFailed.js";
 import {config} from "../../config.js";
 import chalk from "chalk";
+import util from "util";
 
 export default class Pinger {
     /**
@@ -34,7 +35,17 @@ export default class Pinger {
     /**
      * @type {number}
      */
+    #mainInterval;
+
+    /**
+     * @type {number}
+     */
     #cleanupInterval;
+
+    /**
+     * @type {number}
+     */
+    #stateSaveInterval;
 
     /**
      * @type {number}
@@ -47,6 +58,18 @@ export default class Pinger {
     #lastRunByDomain = new Map();
 
     /**
+     * @type {Storage}
+     */
+    #storage;
+
+    /**
+     * @param {Storage} storage
+     */
+    constructor(storage) {
+        this.#storage = storage;
+    }
+
+    /**
      * @param {Test[]} tests
      * @returns {Pinger}
      */
@@ -57,12 +80,73 @@ export default class Pinger {
     }
 
     /**
+     * @returns {Promise<void>}
+     */
+    async loadState$() {
+        if (!this.#storage) return;
+
+        const testStates = await this.#storage.getTestStates$();
+        if (this.#tests) {
+            this.#tests.forEach(test => {
+                const stored = testStates[test.name];
+                const currentHash = this.#calculateTestHash(test);
+
+                if (stored) {
+                    if (stored.hash === currentHash) {
+                        // Config hasn't changed, restore last check time
+                        if (stored.lastCheckTime !== undefined && stored.lastCheckTime !== null) {
+                            test.lastCheckTime = stored.lastCheckTime;
+                        }
+                    } else {
+                        info(`Configuration change detected for test "${test.name}". Resetting state.`);
+                        test.lastCheckTime = 0; // Force immediate run
+                    }
+                }
+                // Store the hash on the test object for saving later
+                test.configHash = currentHash;
+            });
+        }
+
+        const currentTestIx = await this.#storage.getAppState$('currentTestIx');
+        if (currentTestIx !== null) {
+            this.#currentTestIx = currentTestIx;
+        }
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async saveState$() {
+        if (!this.#storage || !this.#tests) return;
+
+        info('Saving state...');
+
+        const testStates = {};
+        this.#tests.forEach(test => {
+            testStates[test.name] = {
+                lastCheckTime: test.lastCheckTime || null,
+                hash: test.configHash || this.#calculateTestHash(test)
+            };
+        });
+
+        try {
+            await this.#storage.saveTestStates$(testStates);
+            if (this.#currentTestIx !== undefined) {
+                await this.#storage.saveAppState$('currentTestIx', this.#currentTestIx);
+            }
+        } catch (err) {
+            error(`Failed to save state: ${err.message}`);
+        }
+    }
+
+    /**
      * @returns {Pinger}
      */
     start() {
+        info('Pinger started.');
         this.#startTime = Date.now();
 
-        setInterval(async () => {
+        this.#mainInterval = setInterval(async () => {
             if (Date.now() - this.#startTime < (config.cooldownMs || 0)) {
                 return;
             }
@@ -82,7 +166,7 @@ export default class Pinger {
             }
 
             info(`Executing test "${test.name}".`);
-            test.lastCheckTime = now();
+            test.lastCheckTime = now().getTime(); // Store as timestamp directly
             this.#lastRunByDomain.set(domain, Date.now());
 
             const respTest = new ResponseTest(test);
@@ -113,6 +197,9 @@ export default class Pinger {
         }, 99);
 
         this.#cleanupInterval = setInterval(() => this.#periodicCleanup(), 3600000); // 1 hour
+
+        const stateSaveIntervalMs = (config.stateSaveIntervalSeconds || 60) * 1000;
+        this.#stateSaveInterval = setInterval(() => this.saveState$(), stateSaveIntervalMs);
 
         return this;
     }
@@ -167,7 +254,7 @@ export default class Pinger {
 
         // return the server if it was never pinged or the runEveryMinute time has passed since the last run
         let lastCheckTime = test.lastCheckTime;
-        if (!lastCheckTime || Math.floor(new Date() - lastCheckTime) >= test.runEveryMs) {
+        if (!lastCheckTime || Math.floor(new Date().getTime() - lastCheckTime) >= test.runEveryMs) {
             return test;
         }
 
@@ -191,7 +278,7 @@ export default class Pinger {
         }
         this.#sentMessages.set(key, timestamp);
 
-        // 2. Initialize buffer if it doesn't exist
+        // 2. Initialize the buffer if it doesn't exist
         if (!this.#slackBuffers.has(url)) {
             this.#slackBuffers.set(url, { messages: [], timer: null });
         }
@@ -241,7 +328,9 @@ export default class Pinger {
      * @returns {Promise<void>}
      */
     async cleanup() {
+        clearInterval(this.#mainInterval);
         clearInterval(this.#cleanupInterval);
+        clearInterval(this.#stateSaveInterval);
         info('Cleaning up and sending remaining slack messages...');
 
         const promises = [];
@@ -249,7 +338,48 @@ export default class Pinger {
             promises.push(this.#flushSlackBuffer(url));
         }
 
+        // Final state save before exit
+        promises.push(this.saveState$());
+
+        // Wait for Slack messages and state save to finish BEFORE closing storage
         await Promise.all(promises);
+
+        if (this.#storage) {
+            await this.#storage.close$();
+        }
+
         info('Cleanup finished.');
+    }
+
+    /**
+     * A very fast non-cryptographic 32-bit hash function (xxHash-like concept).
+     *
+     * @param {string} str
+     * @param {number} seed
+     * @returns {string}
+     */
+    #xxh32(str, seed = 0) {
+        let hval = seed ^ 0x811c9dc5;
+        for (let i = 0, l = str.length; i < l; i++) {
+            hval ^= str.charCodeAt(i);
+            hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
+        }
+        return (hval >>> 0).toString(16);
+    }
+
+    /**
+     * Generates a hash for a test configuration to detect changes.
+     *
+     * @param {Test} test
+     * @returns {string}
+     */
+    #calculateTestHash(test) {
+        const testSignature = util.inspect(test, {
+            showHidden: false,
+            depth: null,
+            colors: false
+        });
+
+        return this.#xxh32(testSignature);
     }
 }

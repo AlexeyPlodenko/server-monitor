@@ -9,7 +9,8 @@ A standalone script that monitors web services availability.
     export const config = {
         sendSlackMessages: true,
         cooldownMs: 1000,
-        sameDomainDelayMs: 1000
+        sameDomainDelayMs: 1000,
+        stateSaveIntervalSeconds: 600
     };
     ```
 2. Create the tests in the `/tests/` directory

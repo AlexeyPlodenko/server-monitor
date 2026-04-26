@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import Pinger from "./lib/Pinger.js";
+import Storage from "./lib/Storage.js";
 import {d, info, error} from "./lib/helpers.js";
-import AbstractValidator from "./lib/validators/AbstractValidator.js";
 
 /**
  * @typedef {{name: string, url: string, runEveryMs: number, request: JsFetch, validators: AbstractValidator[]}} Test
@@ -14,7 +14,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const testsDir = path.resolve(__dirname, '../tests');
 
 const testsByFile = new Map();
-const app = new Pinger();
+const storage = new Storage();
+await storage.init$();
+
+const app = new Pinger(storage);
 
 /**
  * Loads or reloads a specific test file.
@@ -63,6 +66,7 @@ async function loadAllTests() {
 // Initializing the app
 await loadAllTests();
 updateAppTests();
+await app.loadState$();
 app.start();
 
 // Monitor tests directory for changes
