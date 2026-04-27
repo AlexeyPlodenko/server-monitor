@@ -9,7 +9,9 @@ The following tests for an HTTP endpoint can be performed:
 * HTTP status code
 * Page has text
 * Page is not empty
-* HTTP endpoint redirects to HTTPS
+* HTTP endpoint redirects to HTTPS.
+
+You can monitor as many hosts (domains) at the same time as you want.
 
 ## First run
 
