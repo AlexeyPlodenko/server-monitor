@@ -4,7 +4,7 @@ A standalone script that monitors web services availability and send notificatio
 
 ## First run
 
-1. Create `/config.js` file:
+1. Create `/config.js` file (check the Configuration section for details):
     ```javascript
     export const config = {
         sendSlackMessages: true,
@@ -133,6 +133,24 @@ Use `pm2` NPM package to manage your application in the production environment.
 
 1. Install `Node.js` and `NPM` on your server
 2. Install `pm2` on the server - `npm install pm2@latest -g`
-3. Execute `pnpm install` to install NPM packages
+3. Execute `npm i` to install NPM packages
 4. Navigate to the project root and execute `pm2 start ecosystem.config.cjs --env production` to start the app
 5. _Execute `pm2 install pm2-logrotate` to install logrotate module, to prevent excessive log file growth_
+
+### PM2 Configuration Details
+
+The application is configured with the following parameters in `ecosystem.config.cjs`:
+
+* **Name:** `server-monitor-pinger`
+* **Script:** `./src/pinger.js`
+* **Restart Policy:**
+    * **Cron Restart:** `0 3 * * *` (restarts every day at 3 AM)
+    * **Max Memory Restart:** `1000M`
+* **Logging:**
+    * **Log Date Format:** `YYYY-MM-DD HH:mm:ss`
+    * **Output Log:** `./logs/out.log`
+    * **Error Log:** `./logs/errors.log`
+    * **Combined Logs:** Enabled
+* **Environments:**
+    * `development`: Default environment
+    * `production`: Production environment (set with `--env production`)
