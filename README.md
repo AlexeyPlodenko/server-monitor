@@ -13,7 +13,14 @@ The following tests for an HTTP endpoint can be performed:
 
 You can monitor as many hosts (domains) at the same time as you want.
 
-<a href="https://plodenko.com/server-monitor/log-output-example.png"><img src="https://plodenko.com/server-monitor/log-output-example.png" height="200" style="margin: 0 5px 5px 0;" alt="Log output examle" /></a>
+## Messages
+
+<a href="https://plodenko.com/server-monitor/cli-log-output-example.png"><img src="https://plodenko.com/server-monitor/cli-log-output-example.png" height="200" style="margin: 0 5px 5px 0;" alt="CLI log output example" /></a>
+<a href="https://plodenko.com/server-monitor/discord-log-example.png"><img src="https://plodenko.com/server-monitor/discord-log-example.png" height="200" style="margin: 0 5px 5px 0;" alt="Discord output example" /></a>
+<a href="https://plodenko.com/server-monitor/slack-log-example.png"><img src="https://plodenko.com/server-monitor/slack-log-example.png" height="200" style="margin: 0 5px 5px 0;" alt="Slack output example" /></a>
+<a href="https://plodenko.com/server-monitor/telegram-log-example.png"><img src="https://plodenko.com/server-monitor/telegram-log-example.png" height="200" style="margin: 0 5px 5px 0;" alt="Telegram output example" /></a>
+
+<div style="clear: both;"></div>
 
 ## First run
 
