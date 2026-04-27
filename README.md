@@ -74,82 +74,39 @@ import RedirectsToHttps from "../src/lib/validators/RedirectsToHttps.js";
  */
 export const tests = [
     {
-        name: 'systemit.lv/tvaika-barjeras loads',
-        url: 'https://systemit.lv/tvaika-barjeras',
+        name: 'example.com loads',
+        url: 'https://example.com',
         runEveryMs: 60000, // 1 minute
         request: JsFetch,
         validators: [
             new IsStatusCode(200),
-            new HasText('Systemit. All Rights Reserved.'),
+            new HasText('Example Domain'),
             new HasLoadedWithinMs(1000)
         ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD',
-        discordWebhookUrl: 'https://discordapp.com/api/webhooks/1498216742525348/1qy81VQB5d_DiSihata241vXyp9JU5g1_FKo2N',
+        slackWebhookUrl: 'https://hooks.slack.com/services/XXX',
+        discordWebhookUrl: 'https://discordapp.com/api/webhooks/XXX',
         telegram: {
-            botToken: '123456789:ABCdefGHIjklMNOpqrsTUVwxyz',
-            chatId: '123456789'
+            botToken: 'XXX',
+            chatId: 'XXX'
         }
-    },
-    {
-        name: 'systemit.lv/tvaika-barjeras/ redirects',
-        url: 'https://systemit.lv/tvaika-barjeras/',
-        runEveryMs: 86400000, // 1 day
-        request: JsFetch,
-        validators: [
-            new IsStatusCode(301),
-            new HasLoadedWithinMs(1000)
-        ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
-    },
-    {
-        name: 'systemit.lv/robots.txt',
-        url: 'https://systemit.lv/robots.txt',
-        runEveryMs: 86400000, // 1 day
-        request: JsFetch,
-        validators: [
-            new IsStatusCode(200),
-            new NotEmpty(),
-            new HasLoadedWithinMs(1000)
-        ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
-    },
-    {
-        name: 'systemit.lv HTTP to HTTPS redirect',
-        url: 'http://systemit.lv',
-        runEveryMs: 86400000, // 1 day
-        request: JsFetch,
-        validators: [
-            new RedirectsToHttps([301]),
-            new HasLoadedWithinMs(1000)
-        ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
-    },
-    {
-        name: 'systemit.lv HTTP www to HTTPS non-www redirect',
-        url: 'http://www.systemit.lv/tvaika-barjeras',
-        runEveryMs: 86400000, // 1 day
-        request: JsFetch,
-        validators: [
-            new IsStatusCode([301, 307]),
-            new HasLoadedWithinMs(1000)
-        ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
-    },
-    {
-        name: 'systemit.lv www to non-www redirect',
-        url: 'https://www.systemit.lv/tvaika-barjeras',
-        runEveryMs: 86400000, // 1 day
-        request: JsFetch,
-        validators: [
-            new IsStatusCode([301, 307]),
-            new HasLoadedWithinMs(1000)
-        ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
-    },
+    }
 ];
 ```
 
-## Production run
+## Running with Docker
+
+1. Ensure you have `Docker` and `Docker Compose` installed.
+2. Create your `config.js` and add tests to the `/tests/` directory as described above.
+3. Build and start the container:
+   ```bash
+   docker-compose up -d --build
+   ```
+4. View logs:
+   ```bash
+   docker logs -f server-monitor
+   ```
+
+## Production run (Alternative)
 
 Use `pm2` NPM package to manage your application in the production environment.
 

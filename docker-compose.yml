@@ -1,0 +1,12 @@
+services:
+    server-monitor:
+        build: .
+        container_name: server-monitor
+        restart: unless-stopped
+        volumes:
+            - ./config.js:/usr/src/app/config.js:ro
+            - ./tests/:/usr/src/app/tests/:ro
+            - ./logs/:/usr/src/app/logs/
+            - ./state/:/usr/src/app/state/
+        environment:
+            - NODE_ENV=production
