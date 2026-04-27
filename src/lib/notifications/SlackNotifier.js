@@ -7,8 +7,8 @@ export default class SlackNotifier extends BaseNotifier {
      */
     #webhooks = new Map();
 
-    constructor(sentMessages) {
-        super('slack', sentMessages);
+    constructor(sentMessages, deduplicationTimeout) {
+        super('slack', sentMessages, deduplicationTimeout);
     }
 
     /**
@@ -23,11 +23,11 @@ export default class SlackNotifier extends BaseNotifier {
     }
 
     /**
-     * @param {string} url
+     * @param {string} target Webhook URL
      * @param {string} text
      * @returns {Promise<void>}
      */
-    async send$(url, text) {
-        await this.#getWebhook(url).send({ text });
+    async send$(target, text) {
+        await this.#getWebhook(target).send({ text });
     }
 }

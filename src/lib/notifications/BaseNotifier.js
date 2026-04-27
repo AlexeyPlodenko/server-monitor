@@ -17,37 +17,53 @@ export default class BaseNotifier {
     #sentMessages;
 
     /**
+     * @type {number}
+     */
+    #deduplicationTimeout;
+
+    /**
      * @param {string} type
      * @param {Map<string, number>} sentMessages Shared map for deduplication
+     * @param {number} deduplicationTimeout Deduplication timeout in milliseconds
      */
-    constructor(type, sentMessages) {
+    constructor(type, sentMessages, deduplicationTimeout = 3600000) {
         this.#type = type;
         this.#sentMessages = sentMessages;
+        this.#deduplicationTimeout = deduplicationTimeout;
     }
 
     /**
-     * @param {string} url
+     * @param {any} target Identification for the notification destination (e.g. webhook URL or config object)
+     * @returns {string}
+     */
+    #getTargetKey(target) {
+        return typeof target === 'string' ? target : JSON.stringify(target);
+    }
+
+    /**
+     * @param {*} target
      * @param {string} message
      */
-    buffer(url, message) {
-        const key = `${this.#type}|${url}|${message}`;
+    buffer(target, message) {
+        const targetKey = this.#getTargetKey(target);
+        const dedupeKey = `${this.#type}|${targetKey}|${message}`;
         const timestamp = Date.now();
 
         // 1. Deduplication logic (1-hour window per unique message)
-        if (this.#sentMessages.has(key)) {
-            const lastSent = this.#sentMessages.get(key);
-            if (timestamp - lastSent < 3600000) {
+        if (this.#sentMessages.has(dedupeKey)) {
+            const lastSent = this.#sentMessages.get(dedupeKey);
+            if (timestamp - lastSent < this.#deduplicationTimeout) {
                 return;
             }
         }
-        this.#sentMessages.set(key, timestamp);
+        this.#sentMessages.set(dedupeKey, timestamp);
 
         // 2. Initialize the buffer if it doesn't exist
-        if (!this.#buffers.has(url)) {
-            this.#buffers.set(url, { messages: [], timer: null });
+        if (!this.#buffers.has(targetKey)) {
+            this.#buffers.set(targetKey, { messages: [], timer: null, target });
         }
 
-        const buffer = this.#buffers.get(url);
+        const buffer = this.#buffers.get(targetKey);
         buffer.messages.push(message);
 
         // 3. Debounce Logic:
@@ -56,19 +72,20 @@ export default class BaseNotifier {
         }
 
         buffer.timer = setTimeout(() => {
-            this.flush$(url);
+            this.flush$(targetKey);
         }, 5000);
     }
 
     /**
-     * @param {string} url
+     * @param {string} targetKey
      * @returns {Promise<void>}
      */
-    async flush$(url) {
-        const buffer = this.#buffers.get(url);
+    async flush$(targetKey) {
+        const buffer = this.#buffers.get(targetKey);
         if (!buffer || buffer.messages.length === 0) return;
 
         const text = buffer.messages.join('\n');
+        const target = buffer.target;
 
         // Clear buffer state BEFORE sending to prevent race conditions
         buffer.messages = [];
@@ -78,7 +95,7 @@ export default class BaseNotifier {
         }
 
         try {
-            await this.send$(url, text);
+            await this.send$(target, text);
         } catch (err) {
             error(`Failed to send ${this.#type} notification: ${err.message}`);
         }
@@ -89,8 +106,8 @@ export default class BaseNotifier {
      */
     async flushAll$() {
         const promises = [];
-        for (const url of this.#buffers.keys()) {
-            promises.push(this.flush$(url));
+        for (const targetKey of this.#buffers.keys()) {
+            promises.push(this.flush$(targetKey));
         }
         await Promise.all(promises);
     }
@@ -98,11 +115,11 @@ export default class BaseNotifier {
     /**
      * To be implemented by subclasses
      *
-     * @param {string} url
+     * @param {any} target
      * @param {string} text
      * @returns {Promise<void>}
      */
-    async send$(url, text) {
+    async send$(target, text) {
         throw new Error('Method send$() must be implemented');
     }
 }

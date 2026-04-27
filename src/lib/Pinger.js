@@ -6,6 +6,7 @@ import chalk from "chalk";
 import util from "util";
 import SlackNotifier from "./notifications/SlackNotifier.js";
 import DiscordNotifier from "./notifications/DiscordNotifier.js";
+import TelegramNotifier from "./notifications/TelegramNotifier.js";
 
 export default class Pinger {
     /**
@@ -32,6 +33,11 @@ export default class Pinger {
      * @type {DiscordNotifier}
      */
     #discordNotifier;
+
+    /**
+     * @type {TelegramNotifier}
+     */
+    #telegramNotifier;
 
     /**
      * @type {number}
@@ -68,8 +74,9 @@ export default class Pinger {
      */
     constructor(storage) {
         this.#storage = storage;
-        this.#slackNotifier = new SlackNotifier(this.#sentMessages);
-        this.#discordNotifier = new DiscordNotifier(this.#sentMessages);
+        this.#slackNotifier = new SlackNotifier(this.#sentMessages, config.deduplicationTimeoutMs);
+        this.#discordNotifier = new DiscordNotifier(this.#sentMessages, config.deduplicationTimeoutMs);
+        this.#telegramNotifier = new TelegramNotifier(this.#sentMessages, config.deduplicationTimeoutMs);
     }
 
     /**
@@ -114,6 +121,15 @@ export default class Pinger {
         if (currentTestIx !== null) {
             this.#currentTestIx = currentTestIx;
         }
+
+        const sentMessages = await this.#storage.getAppState$('sentMessages');
+        if (sentMessages) {
+            this.#sentMessages = new Map(sentMessages);
+            // Re-bind to notifiers since they were initialized with the old reference
+            this.#slackNotifier = new SlackNotifier(this.#sentMessages, config.deduplicationTimeoutMs);
+            this.#discordNotifier = new DiscordNotifier(this.#sentMessages, config.deduplicationTimeoutMs);
+            this.#telegramNotifier = new TelegramNotifier(this.#sentMessages, config.deduplicationTimeoutMs);
+        }
     }
 
     /**
@@ -137,6 +153,7 @@ export default class Pinger {
             if (this.#currentTestIx !== undefined) {
                 await this.#storage.saveAppState$('currentTestIx', this.#currentTestIx);
             }
+            await this.#storage.saveAppState$('sentMessages', [...this.#sentMessages.entries()]);
         } catch (err) {
             error(`Failed to save state: ${err.message}`);
         }
@@ -180,24 +197,11 @@ export default class Pinger {
             } catch (err) {
                 if (err instanceof ValidationFailed) {
                     info(chalk.red(err.message));
-
-                    if (config.sendSlackMessages && test.slackWebhookUrl) {
-                        this.#slackNotifier.buffer(test.slackWebhookUrl, err.message);
-                    }
-                    if (config.sendDiscordMessages && test.discordWebhookUrl) {
-                        this.#discordNotifier.buffer(test.discordWebhookUrl, err.message);
-                    }
+                    this.#notify$(test, err.message);
                 } else {
                     if (err instanceof Error && err.message.includes('getaddrinfo ENOTFOUND')) {
                         error(err.message);
-
-                        // domain not found
-                        if (config.sendSlackMessages && test.slackWebhookUrl) {
-                            this.#slackNotifier.buffer(test.slackWebhookUrl, err.message);
-                        }
-                        if (config.sendDiscordMessages && test.discordWebhookUrl) {
-                            this.#discordNotifier.buffer(test.discordWebhookUrl, err.message);
-                        }
+                        this.#notify$(test, err.message);
                     } else {
                         throw err; // unknown error, rethrow it
                     }
@@ -213,12 +217,32 @@ export default class Pinger {
         return this;
     }
 
+    /**
+     * @param {Test} test
+     * @param {string} message
+     */
+    #notify$(test, message) {
+        if (config.sendSlackMessages && test.slackWebhookUrl) {
+            this.#slackNotifier.buffer(test.slackWebhookUrl, message);
+        }
+        if (config.sendDiscordMessages && test.discordWebhookUrl) {
+            this.#discordNotifier.buffer(test.discordWebhookUrl, message);
+        }
+        if (config.sendTelegramMessages && test.telegram) {
+            const { botToken, chatId } = test.telegram;
+            if (botToken && chatId) {
+                this.#telegramNotifier.buffer(test.telegram, message);
+            }
+        }
+    }
+
     #periodicCleanup() {
         info('Performing periodic cleanup...');
 
         const now = Date.now();
+        const timeout = config.deduplicationTimeoutMs || 3600000;
         for (const [key, timestamp] of this.#sentMessages.entries()) {
-            if (now - timestamp >= 3600000) { // 1 hour
+            if (now - timestamp >= timeout) {
                 this.#sentMessages.delete(key);
             }
         }
@@ -270,6 +294,7 @@ export default class Pinger {
         const promises = [];
         promises.push(this.#slackNotifier.flushAll$());
         promises.push(this.#discordNotifier.flushAll$());
+        promises.push(this.#telegramNotifier.flushAll$());
 
         // Final state save before exit
         promises.push(this.saveState$());

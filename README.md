@@ -1,6 +1,6 @@
 # ServerMonitor
 
-A standalone script that monitors web services availability and send notifications to Slack and/or Discord.
+A standalone script that monitors web services availability and send notifications to Slack, Discord and/or Telegram.
 
 ## First run
 
@@ -9,14 +9,30 @@ A standalone script that monitors web services availability and send notificatio
     export const config = {
         sendSlackMessages: true,
         sendDiscordMessages: true,
+        sendTelegramMessages: true,
         cooldownMs: 1000,
         sameDomainDelayMs: 1000,
-        stateSaveIntervalSeconds: 600
+        stateSaveIntervalSeconds: 600,
+        deduplicationTimeoutMs: 3600000
     };
     ```
 2. Create the tests in the `/tests/` directory
 3. Execute `pnpm install` to install NPM packages
 4. Execute `pnpm run start`
+
+## Configuration
+
+The `config.js` file contains global settings for the application:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `sendSlackMessages` | Boolean | - | Enable or disable Slack notifications globally. |
+| `sendDiscordMessages` | Boolean | - | Enable or disable Discord notifications globally. |
+| `sendTelegramMessages` | Boolean | - | Enable or disable Telegram notifications globally. |
+| `cooldownMs` | Number | `0` | Delay in milliseconds before starting tests after application launch. |
+| `sameDomainDelayMs` | Number | `1000` | Minimum delay between consecutive tests targeting the same domain. |
+| `stateSaveIntervalSeconds` | Number | `60` | Frequency in seconds at which the application state is saved to storage. |
+| `deduplicationTimeoutMs` | Number | `3600000` | De-duplication Duration: Sets how long a message remains in memory; during this time, no duplicate alerts will be sent. |
 
 ## Tests
 
@@ -45,7 +61,11 @@ export const tests = [
             new HasLoadedWithinMs(1000)
         ],
         slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD',
-        discordWebhookUrl: 'https://discordapp.com/api/webhooks/1498216742525341738/1qy81VQB5d_DiSihata241vXyp9JU5g1_FKo2N'
+        discordWebhookUrl: 'https://discordapp.com/api/webhooks/1498216742525348/1qy81VQB5d_DiSihata241vXyp9JU5g1_FKo2N',
+        telegram: {
+            botToken: '123456789:ABCdefGHIjklMNOpqrsTUVwxyz',
+            chatId: '123456789'
+        }
     },
     {
         name: 'systemit.lv/tvaika-barjeras/ redirects',
