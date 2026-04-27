@@ -13,6 +13,8 @@ The following tests for an HTTP endpoint can be performed:
 
 You can monitor as many hosts (domains) at the same time as you want.
 
+<a href="https://plodenko.com/server-monitor/log-output-example.png"><img src="https://plodenko.com/server-monitor/log-output-example.png" height="200" style="margin: 0 5px 5px 0;" alt="Log output examle" /></a>
+
 ## First run
 
 1. Create `/config.js` file (check the Configuration section for details):
@@ -21,6 +23,7 @@ You can monitor as many hosts (domains) at the same time as you want.
         sendSlackMessages: true,
         sendDiscordMessages: true,
         sendTelegramMessages: true,
+        logDateTime: true,
         cooldownMs: 1000,
         sameDomainDelayMs: 1000,
         stateSaveIntervalSeconds: 600,
@@ -41,6 +44,7 @@ The `config.js` file contains global settings for the application:
 | `sendSlackMessages` | Boolean | - | Enable or disable Slack notifications globally. |
 | `sendDiscordMessages` | Boolean | - | Enable or disable Discord notifications globally. |
 | `sendTelegramMessages` | Boolean | - | Enable or disable Telegram notifications globally. |
+| `logDateTime` | Boolean | `false` | Enable or disable date and time in console output. |
 | `cooldownMs` | Number | `1000` | Delay in milliseconds before starting tests after application launch. |
 | `sameDomainDelayMs` | Number | `1000` | Minimum delay between consecutive tests targeting the same domain. |
 | `stateSaveIntervalSeconds` | Number | `60` | Frequency in seconds at which the application state is saved to storage. |

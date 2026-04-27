@@ -1,25 +1,40 @@
 import util from "node:util";
 import chalk from "chalk";
+import {config} from "../../config.js";
 
 /**
  * @param {string} msg
  */
 export function info(msg) {
-    console.log('INFO', chalk.blue(msg));
+    const output = [];
+    if (config.logDateTime) output.push(formatDate(now()));
+    output.push('INFO');
+    output.push(chalk.blue(msg));
+
+    console.log(...output);
 }
 
 /**
  * @param {string} msg
  */
 export function error(msg) {
-    console.error('ERROR', chalk.red(msg));
+    const output = [];
+    if (config.logDateTime) output.push(formatDate(now()));
+    output.push('ERROR');
+    output.push(chalk.red(msg));
+
+    console.error(...output);
 }
 
 /**
  * @param {...*} args
  */
 export function log(...args) {
-    console.log('LOG', ...args);
+    const output = [];
+    if (config.logDateTime) output.push(formatDate(now()));
+    output.push('LOG');
+
+    console.log(...output, ...args);
 }
 
 /**
