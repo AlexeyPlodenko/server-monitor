@@ -1,6 +1,15 @@
 # ServerMonitor
 
-A standalone script that monitors web services availability and send notifications to Slack, Discord and/or Telegram.
+A standalone Node.js script that monitors web services availability and sends notifications to Slack, Discord and/or Telegram.
+
+The following tests for an HTTP endpoint can be performed:
+
+* HTTP connect time
+* HTTP response time
+* HTTP status code
+* Page has text
+* Page is not empty
+* HTTP endpoint redirects to HTTPS
 
 ## First run
 
