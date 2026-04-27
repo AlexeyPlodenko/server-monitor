@@ -1,6 +1,6 @@
 # ServerMonitor
 
-A standalone script that monitors web services availability.
+A standalone script that monitors web services availability and send notifications to Slack and/or Discord.
 
 ## First run
 
@@ -8,6 +8,7 @@ A standalone script that monitors web services availability.
     ```javascript
     export const config = {
         sendSlackMessages: true,
+        sendDiscordMessages: true,
         cooldownMs: 1000,
         sameDomainDelayMs: 1000,
         stateSaveIntervalSeconds: 600
@@ -43,7 +44,8 @@ export const tests = [
             new HasText('Systemit. All Rights Reserved.'),
             new HasLoadedWithinMs(1000)
         ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/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'
+        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD',
+        discordWebhookUrl: 'https://discordapp.com/api/webhooks/1498216742525341738/1qy81VQB5d_DiSihata241vXyp9JU5g1_FKo2N'
     },
     {
         name: 'systemit.lv/tvaika-barjeras/ redirects',
@@ -54,7 +56,7 @@ export const tests = [
             new IsStatusCode(301),
             new HasLoadedWithinMs(1000)
         ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/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'
+        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
     },
     {
         name: 'systemit.lv/robots.txt',
@@ -66,7 +68,7 @@ export const tests = [
             new NotEmpty(),
             new HasLoadedWithinMs(1000)
         ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/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'
+        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
     },
     {
         name: 'systemit.lv HTTP to HTTPS redirect',
@@ -77,7 +79,7 @@ export const tests = [
             new RedirectsToHttps([301]),
             new HasLoadedWithinMs(1000)
         ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/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'
+        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
     },
     {
         name: 'systemit.lv HTTP www to HTTPS non-www redirect',
@@ -88,7 +90,7 @@ export const tests = [
             new IsStatusCode([301, 307]),
             new HasLoadedWithinMs(1000)
         ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/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'
+        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
     },
     {
         name: 'systemit.lv www to non-www redirect',
@@ -99,7 +101,7 @@ export const tests = [
             new IsStatusCode([301, 307]),
             new HasLoadedWithinMs(1000)
         ],
-        slackWebhookUrl: 'https://hooks.slack.com/services/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'
+        slackWebhookUrl: 'https://hooks.slack.com/services/T0A6TTQGAGL/B0ALD9RFUBT/1z5Rqt0LxeB8XD'
     },
 ];
 ```

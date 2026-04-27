@@ -1,4 +1,5 @@
 import { IncomingWebhook } from '@slack/webhook';
+import { Webhook } from 'discord-webhook-node';
 import {d, error, info, log, now} from "./helpers.js";
 import ResponseTest from "./ResponseTest.js";
 import ValidationFailed from "./errors/ValidationFailed.js";
@@ -23,9 +24,19 @@ export default class Pinger {
     #slackWebhooks = new Map();
 
     /**
+     * @type {Map<string, Webhook>}
+     */
+    #discordWebhooks = new Map();
+
+    /**
      * @type {Map<string, {messages: string[], timer: NodeJS.Timeout}>}
      */
     #slackBuffers = new Map();
+
+    /**
+     * @type {Map<string, {messages: string[], timer: NodeJS.Timeout}>}
+     */
+    #discordBuffers = new Map();
 
     /**
      * @type {Map<string, number>}
@@ -178,16 +189,22 @@ export default class Pinger {
                 if (err instanceof ValidationFailed) {
                     info(chalk.red(err.message));
 
-                    if (config.sendSlackMessages) {
+                    if (config.sendSlackMessages && test.slackWebhookUrl) {
                         this.#bufferSlackMessage(test.slackWebhookUrl, err.message);
+                    }
+                    if (config.sendDiscordMessages && test.discordWebhookUrl) {
+                        this.#bufferDiscordMessage(test.discordWebhookUrl, err.message);
                     }
                 } else {
                     if (err instanceof Error && err.message.includes('getaddrinfo ENOTFOUND')) {
                         error(err.message);
 
                         // domain not found
-                        if (config.sendSlackMessages) {
+                        if (config.sendSlackMessages && test.slackWebhookUrl) {
                             this.#bufferSlackMessage(test.slackWebhookUrl, err.message);
+                        }
+                        if (config.sendDiscordMessages && test.discordWebhookUrl) {
+                            this.#bufferDiscordMessage(test.discordWebhookUrl, err.message);
                         }
                     } else {
                         throw err; // unknown error, rethrow it
@@ -225,12 +242,24 @@ export default class Pinger {
      * @param {string} url
      * @returns {IncomingWebhook}
      */
-    #getWebhook(url) {
+    #getSlackWebhook(url) {
         if (!this.#slackWebhooks.has(url)) {
             this.#slackWebhooks.set(url, new IncomingWebhook(url));
         }
 
         return this.#slackWebhooks.get(url);
+    }
+
+    /**
+     * @param {string} url
+     * @returns {Webhook}
+     */
+    #getDiscordWebhook(url) {
+        if (!this.#discordWebhooks.has(url)) {
+            this.#discordWebhooks.set(url, new Webhook(url));
+        }
+
+        return this.#discordWebhooks.get(url);
     }
 
     /**
@@ -266,7 +295,7 @@ export default class Pinger {
      * @param {string} message
      */
     #bufferSlackMessage(url, message) {
-        const key = `${url}|${message}`;
+        const key = `slack|${url}|${message}`;
         const timestamp = Date.now();
 
         // 1. Deduplication logic (1-hour window per unique message)
@@ -299,6 +328,41 @@ export default class Pinger {
     }
 
     /**
+     * @param {string} url
+     * @param {string} message
+     */
+    #bufferDiscordMessage(url, message) {
+        const key = `discord|${url}|${message}`;
+        const timestamp = Date.now();
+
+        // 1. Deduplication logic (1-hour window per unique message)
+        if (this.#sentMessages.has(key)) {
+            const lastSent = this.#sentMessages.get(key);
+            if (timestamp - lastSent < 3600000) {
+                return;
+            }
+        }
+        this.#sentMessages.set(key, timestamp);
+
+        // 2. Initialize the buffer if it doesn't exist
+        if (!this.#discordBuffers.has(url)) {
+            this.#discordBuffers.set(url, { messages: [], timer: null });
+        }
+
+        const buffer = this.#discordBuffers.get(url);
+        buffer.messages.push(message);
+
+        // 3. Debounce Logic:
+        if (buffer.timer) {
+            clearTimeout(buffer.timer);
+        }
+
+        buffer.timer = setTimeout(() => {
+            this.#flushDiscordBuffer(url);
+        }, 5000);
+    }
+
+    /**
      * Internal helper to actually send the buffered messages.
      *
      * @param {string} url
@@ -318,9 +382,34 @@ export default class Pinger {
         }
 
         try {
-            await this.#getWebhook(url).send({ text });
+            await this.#getSlackWebhook(url).send({ text });
         } catch (err) {
             error(`Failed to send Slack notification: ${err.message}`);
+        }
+    }
+
+    /**
+     * Internal helper to actually send the buffered messages to Discord.
+     *
+     * @param {string} url
+     */
+    async #flushDiscordBuffer(url) {
+        const buffer = this.#discordBuffers.get(url);
+        if (!buffer || buffer.messages.length === 0) return;
+
+        const text = buffer.messages.join('\n');
+
+        // Clear buffer state BEFORE sending
+        buffer.messages = [];
+        if (buffer.timer) {
+            clearTimeout(buffer.timer);
+            buffer.timer = null;
+        }
+
+        try {
+            await this.#getDiscordWebhook(url).send(text);
+        } catch (err) {
+            error(`Failed to send Discord notification: ${err.message}`);
         }
     }
 
@@ -331,17 +420,20 @@ export default class Pinger {
         clearInterval(this.#mainInterval);
         clearInterval(this.#cleanupInterval);
         clearInterval(this.#stateSaveInterval);
-        info('Cleaning up and sending remaining slack messages...');
+        info('Cleaning up and sending remaining notification messages...');
 
         const promises = [];
         for (const url of this.#slackBuffers.keys()) {
             promises.push(this.#flushSlackBuffer(url));
         }
+        for (const url of this.#discordBuffers.keys()) {
+            promises.push(this.#flushDiscordBuffer(url));
+        }
 
         // Final state save before exit
         promises.push(this.saveState$());
 
-        // Wait for Slack messages and state save to finish BEFORE closing storage
+        // Wait for all messages and state save to finish BEFORE closing storage
         await Promise.all(promises);
 
         if (this.#storage) {
