@@ -30,7 +30,7 @@ The `config.js` file contains global settings for the application:
 | `sendSlackMessages` | Boolean | - | Enable or disable Slack notifications globally. |
 | `sendDiscordMessages` | Boolean | - | Enable or disable Discord notifications globally. |
 | `sendTelegramMessages` | Boolean | - | Enable or disable Telegram notifications globally. |
-| `cooldownMs` | Number | `0` | Delay in milliseconds before starting tests after application launch. |
+| `cooldownMs` | Number | `1000` | Delay in milliseconds before starting tests after application launch. |
 | `sameDomainDelayMs` | Number | `1000` | Minimum delay between consecutive tests targeting the same domain. |
 | `stateSaveIntervalSeconds` | Number | `60` | Frequency in seconds at which the application state is saved to storage. |
 | `deduplicationTimeoutMs` | Number | `3600000` | De-duplication Duration: Sets how long a message remains in memory; during this time, no duplicate alerts will be sent. |
