@@ -1,5 +1,6 @@
 {
     "type": "module",
+    "license": "Polyform Non-Commercial",
     "scripts": {
         "start": "node src/pinger.js"
     },
