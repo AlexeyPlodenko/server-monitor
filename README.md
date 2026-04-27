@@ -17,8 +17,9 @@ A standalone script that monitors web services availability and send notificatio
     };
     ```
 2. Create the tests in the `/tests/` directory
-3. Execute `pnpm install` to install NPM packages
-4. Execute `pnpm run start`
+3. Execute `npm install` to install NPM packages
+4. Add your first tests file. See the Tests section for examples
+5. Execute `npm start`
 
 ## Configuration
 
