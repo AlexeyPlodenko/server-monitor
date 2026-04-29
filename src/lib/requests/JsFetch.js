@@ -57,7 +57,9 @@ export default class JsFetch {
                 method: 'GET',
                 headers: {
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
-                }
+                },
+                // Set a timeout for the request (e.g., 30 seconds)
+                timeout: 30000
             });
 
             this.#endTime = Date.now();

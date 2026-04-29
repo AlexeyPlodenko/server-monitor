@@ -198,13 +198,12 @@ export default class Pinger {
                 if (err instanceof ValidationFailed) {
                     info(chalk.red(err.message));
                     this.#notify$(test, err.message);
+                } else if (err instanceof Error) {
+                    // Catch any other Error, including timeout errors
+                    error(err.message);
+                    this.#notify$(test, err.message);
                 } else {
-                    if (err instanceof Error && err.message.includes('getaddrinfo ENOTFOUND')) {
-                        error(err.message);
-                        this.#notify$(test, err.message);
-                    } else {
-                        throw err; // unknown error, rethrow it
-                    }
+                    throw err; // Re-throw if it's not an Error object
                 }
             }
         }, 99);
