@@ -19,16 +19,7 @@ export default class TelegramNotifier extends BaseNotifier {
         }
 
         const endpoint = `https://api.telegram.org/bot${botToken}/sendMessage`;
-// d(endpoint, {
-//     method: 'POST',
-//     headers: {
-//         'content-type': 'application/json',
-//     },
-//     body: JSON.stringify({
-//         chat_id: chatId,
-//         text: text,
-//     }),
-// });
+
         const { statusCode, body } = await request(endpoint, {
             method: 'POST',
             headers: {
