@@ -109,8 +109,11 @@ export default class Pinger {
                         }
                     } else {
                         info(`Configuration change detected for test "${test.name}". Resetting state.`);
-                        test.lastCheckTime = 0; // Force immediate run
+                        test.lastCheckTime = now().getTime() - Math.floor(Math.random() * test.runEveryMs); // Stagger
                     }
+                } else {
+                    // New test, stagger it
+                    test.lastCheckTime = now().getTime() - Math.floor(Math.random() * test.runEveryMs);
                 }
                 // Store the hash on the test object for saving later
                 test.configHash = currentHash;
@@ -274,7 +277,8 @@ export default class Pinger {
 
         // return the server if it was never pinged or the runEveryMinute time has passed since the last run
         let lastCheckTime = test.lastCheckTime;
-        if (!lastCheckTime || Math.floor(new Date().getTime() - lastCheckTime) >= test.runEveryMs) {
+        const jitter = Math.floor(Math.random() * 5000); // 5s jitter
+        if (!lastCheckTime || Math.floor(new Date().getTime() - lastCheckTime) >= (test.runEveryMs + jitter)) {
             return test;
         }
 
