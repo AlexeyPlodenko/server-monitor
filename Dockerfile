@@ -5,6 +5,7 @@ WORKDIR /app/
 RUN apt-get update && apt-get install -y python3 make g++
 COPY package*.json ./
 RUN npm ci --omit=dev
+RUN npm rebuild better-sqlite3 --ignore-scripts=false
 
 # Stage 2: Runtime
 FROM node:24-slim
