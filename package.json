@@ -2,7 +2,8 @@
     "type": "module",
     "license": "Polyform Non-Commercial",
     "scripts": {
-        "start": "node src/pinger.js"
+        "start": "node src/pinger.js",
+        "test": "node --test src/**/*.test.js"
     },
     "dependencies": {
         "@slack/web-api": "7.14.1",

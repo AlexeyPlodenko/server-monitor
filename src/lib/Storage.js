@@ -8,14 +8,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default class Storage {
     #db;
 
-    constructor() {
-        const dbDir = path.resolve(__dirname, '../../state');
-        if (!fs.existsSync(dbDir)) {
-            fs.mkdirSync(dbDir, { recursive: true });
+    constructor(dbPath = null) {
+        if (!dbPath) {
+            const dbDir = path.resolve(__dirname, '../../state');
+            if (!fs.existsSync(dbDir)) {
+                fs.mkdirSync(dbDir, { recursive: true });
+            }
+            dbPath = path.join(dbDir, 'state.db');
         }
-        const dbPath = path.join(dbDir, 'state.db');
         this.#db = new Database(dbPath);
-        this.#db.pragma('journal_mode = WAL');
+        if (dbPath !== ':memory:') {
+            this.#db.pragma('journal_mode = WAL');
+        }
     }
 
     /**
