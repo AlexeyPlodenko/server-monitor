@@ -1,34 +1,35 @@
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { MockAgent, setGlobalDispatcher, getGlobalDispatcher, errors } from 'undici';
+import http from 'node:http';
 import JsConnect from './JsConnect.js';
 
 describe('JsConnect', () => {
-    let mockAgent;
-    let originalDispatcher;
+    let server;
+    let baseUrl;
 
-    beforeEach(() => {
-        originalDispatcher = getGlobalDispatcher();
-        mockAgent = new MockAgent();
-        mockAgent.disableNetConnect();
-        setGlobalDispatcher(mockAgent);
+    before(async () => {
+        server = http.createServer((req, res) => {
+            if (req.url === '/connect-test') {
+                res.writeHead(204, { 'x-health-check': 'ok' });
+                res.end();
+            } else {
+                res.writeHead(404);
+                res.end();
+            }
+        });
+
+        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+        const port = server.address().port;
+        baseUrl = `http://127.0.0.1:${port}`;
     });
 
-    afterEach(() => {
-        setGlobalDispatcher(originalDispatcher);
+    after(async () => {
+        await new Promise((resolve) => server.close(resolve));
     });
 
     it('connects to URL and extracts status code and headers without body text', async () => {
-        const mockPool = mockAgent.get('https://example.com');
-        mockPool.intercept({
-            path: '/connect-test',
-            method: 'GET'
-        }).reply(204, '', {
-            headers: { 'x-health-check': 'ok' }
-        });
-
-        const connector = new JsConnect('https://example.com/connect-test');
-        assert.equal(connector.getUrl(), 'https://example.com/connect-test');
+        const connector = new JsConnect(`${baseUrl}/connect-test`);
+        assert.equal(connector.getUrl(), `${baseUrl}/connect-test`);
 
         const statusCode = await connector.getResponseStatusCode$();
         assert.equal(statusCode, 204);
@@ -42,16 +43,14 @@ describe('JsConnect', () => {
         const loadTime = await connector.getLoadTimeMs$();
         assert.ok(typeof loadTime === 'number');
         assert.ok(loadTime >= 0);
+
+        const timings = connector.getTimings();
+        assert.ok(timings !== null);
+        assert.ok(typeof timings.total === 'number');
     });
 
     it('rejects on connection failure', async () => {
-        const mockPool = mockAgent.get('https://example.com');
-        mockPool.intercept({
-            path: '/down',
-            method: 'GET'
-        }).replyWithError(new errors.SocketError('Host unreachable'));
-
-        const connector = new JsConnect('https://example.com/down');
+        const connector = new JsConnect('http://127.0.0.1:59999/down');
         await assert.rejects(async () => {
             await connector.load$();
         });

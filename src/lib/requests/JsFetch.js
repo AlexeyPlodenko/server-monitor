@@ -1,36 +1,23 @@
 import {d} from "../helpers.js";
-import { request, fetch, Agent, setGlobalDispatcher } from 'undici';
+import http from 'node:http';
+import https from 'node:https';
 
 export default class JsFetch {
-    /**
-     * @type {boolean}
-     */
-    #loaded = false;
-
-    /**
-     * @type {Response}
-     */
     #response;
-
-    /**
-     * @type {string|null}
-     */
     #responseText = null;
-
-    /**
-     * @type {string}
-     */
     #url;
-
-    /**
-     * @type {number|null}
-     */
     #startTime = null;
-
-    /**
-     * @type {number|null}
-     */
     #endTime = null;
+    
+    // Timings breakdown
+    #timings = {
+        dnsLookup: null,
+        tcpConnection: null,
+        tlsHandshake: null,
+        firstByte: null,
+        download: null,
+        total: null
+    };
 
     /**
      * @returns {string}
@@ -47,34 +34,94 @@ export default class JsFetch {
     }
 
     /**
-     * @returns {Promise<Response>}
+     * @returns {Promise<any>}
      */
     async load$() {
         if (!this.#response) {
             this.#startTime = Date.now();
+            
+            this.#response = await new Promise((resolve, reject) => {
+                const urlObj = new URL(this.#url);
+                const client = urlObj.protocol === 'https:' ? https : http;
+                
+                const req = client.request(this.#url, {
+                    method: 'GET',
+                    headers: {
+                        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
+                    },
+                    timeout: 30000,
+                    agent: false
+                });
 
-            this.#response = await request(this.#url, {
-                method: 'GET',
-                headers: {
-                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
-                },
-                // Set a timeout for the request (e.g., 30 seconds)
-                timeout: 30000
+                req.on('socket', (socket) => {
+                    socket.on('lookup', () => {
+                        this.#timings.dnsLookup = Date.now() - this.#startTime;
+                    });
+                    socket.on('connect', () => {
+                        this.#timings.tcpConnection = Date.now() - this.#startTime - (this.#timings.dnsLookup || 0);
+                    });
+                    socket.on('secureConnect', () => {
+                        this.#timings.tlsHandshake = Date.now() - this.#startTime - (this.#timings.dnsLookup || 0) - (this.#timings.tcpConnection || 0);
+                    });
+                });
+
+                req.on('response', (res) => {
+                    const firstByteTime = Date.now() - this.#startTime;
+                    this.#timings.firstByte = firstByteTime - (this.#timings.dnsLookup || 0) - (this.#timings.tcpConnection || 0) - (this.#timings.tlsHandshake || 0);
+
+                    // We wrap the response to maintain compatibility with the old interface
+                    const wrappedResponse = {
+                        statusCode: res.statusCode,
+                        headers: res.headers,
+                        // Provide a way to get the text, matching what getResponseText$ expects
+                        text: () => {
+                            return new Promise((resolveBody, rejectBody) => {
+                                let body = '';
+                                res.on('data', (chunk) => body += chunk);
+                                res.on('end', () => {
+                                    this.#endTime = Date.now();
+                                    this.#timings.download = this.#endTime - this.#startTime - firstByteTime;
+                                    this.#timings.total = this.#endTime - this.#startTime;
+                                    resolveBody(body);
+                                });
+                                res.on('error', rejectBody);
+                            });
+                        }
+                    };
+                    
+                    resolve(wrappedResponse);
+                });
+
+                req.on('error', (err) => {
+                    reject(err);
+                });
+
+                req.on('timeout', () => {
+                    req.destroy(new Error('Request timed out'));
+                });
+
+                req.end();
             });
-
-            this.#endTime = Date.now();
-
-// @TODO add max loading time
         }
 
         return this.#response;
     }
 
     /**
+     * @returns {Object|null}
+     */
+    getTimings() {
+        return this.#timings;
+    }
+
+    /**
      * @returns {Promise<number>}
      */
     async getLoadTimeMs$() {
-        await this.load$();
+        // To get the full load time including body download, we MUST trigger body download if it hasn't happened.
+        // But if someone just wants load time without body? JsFetch typically consumes body eventually for HasText.
+        // For accurate total load time, we should await the text.
+        await this.getResponseText$();
         return this.#endTime - this.#startTime;
     }
 
@@ -100,14 +147,7 @@ export default class JsFetch {
     async getResponseText$() {
         if (this.#responseText === null) {
             const resp = await this.load$();
-
-            // Clone to keep the original response body intact for other potential uses
-            // undici request body is a stream, so we might need to handle it differently if it was fetch
-            if (resp.body) {
-                this.#responseText = await resp.body.text();
-            } else if (typeof resp.text === 'function') {
-                this.#responseText = await resp.text();
-            }
+            this.#responseText = await resp.text();
         }
         return this.#responseText;
     }
