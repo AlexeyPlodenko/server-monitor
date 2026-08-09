@@ -1,7 +1,7 @@
 import {d, error, info, log, now} from "./helpers.js";
 import ResponseTest from "./ResponseTest.js";
 import ValidationFailed from "./errors/ValidationFailed.js";
-import {config} from "../../config.js";
+import {config} from "./config.js";
 import chalk from "chalk";
 import util from "util";
 import SlackNotifier from "./notifications/SlackNotifier.js";

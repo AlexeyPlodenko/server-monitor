@@ -1,6 +1,6 @@
 import util from "node:util";
 import chalk from "chalk";
-import {config} from "../../config.js";
+import {config} from "./config.js";
 
 /**
  * @param {string} msg

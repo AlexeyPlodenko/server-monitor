@@ -18,4 +18,6 @@ jobs:
           node-version: 20.x
           cache: 'npm'
       - run: npm ci
+      - name: Copy config example
+        run: cp config.example.js config.js
       - run: npm test
