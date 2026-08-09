@@ -40,6 +40,9 @@ describe('JsConnect', () => {
         const headers = await connector.getResponseHeaders$();
         assert.equal(headers['x-health-check'], 'ok');
 
+        const mimeType = await connector.getResponseMimeType$();
+        assert.equal(mimeType, '');
+
         const loadTime = await connector.getLoadTimeMs$();
         assert.ok(typeof loadTime === 'number');
         assert.ok(loadTime >= 0);

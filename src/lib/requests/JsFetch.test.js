@@ -43,6 +43,9 @@ describe('JsFetch', () => {
         const headers = await fetcher.getResponseHeaders$();
         assert.equal(headers['content-type'], 'text/plain');
 
+        const mimeType = await fetcher.getResponseMimeType$();
+        assert.equal(mimeType, 'text/plain');
+
         const loadTime = await fetcher.getLoadTimeMs$();
         assert.ok(typeof loadTime === 'number');
         assert.ok(loadTime >= 0);

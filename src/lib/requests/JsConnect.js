@@ -138,6 +138,16 @@ export default class JsConnect {
     }
 
     /**
+     * Returns the response MIME type (lowercase, stripped of parameters).
+     * @returns {Promise<string>} The response MIME type.
+     */
+    async getResponseMimeType$() {
+        const headers = await this.getResponseHeaders$();
+        const contentType = headers ? (headers['content-type'] || headers['Content-Type'] || '') : '';
+        return contentType.split(';')[0].trim().toLowerCase();
+    }
+
+    /**
      * This method is intentionally implemented to return an empty string, as JsConnect
      * does not consume the response body.
      * @returns {Promise<string>} An empty string.

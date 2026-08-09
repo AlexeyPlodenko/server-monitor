@@ -144,6 +144,15 @@ export default class JsFetch {
     /**
      * @returns {Promise<string>}
      */
+    async getResponseMimeType$() {
+        const headers = await this.getResponseHeaders$();
+        const contentType = headers ? (headers['content-type'] || headers['Content-Type'] || '') : '';
+        return contentType.split(';')[0].trim().toLowerCase();
+    }
+
+    /**
+     * @returns {Promise<string>}
+     */
     async getResponseText$() {
         if (this.#responseText === null) {
             const resp = await this.load$();
