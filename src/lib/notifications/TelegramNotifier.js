@@ -1,4 +1,5 @@
-import { request } from 'undici';
+import http from 'node:http';
+import https from 'node:https';
 import BaseNotifier from "./BaseNotifier.js";
 import {d} from "../helpers.js";
 
@@ -13,30 +14,52 @@ export default class TelegramNotifier extends BaseNotifier {
      * @returns {Promise<void>}
      */
     async send$(config, text) {
-        const { botToken, chatId } = config;
+        const { botToken, chatId, baseUrl } = config;
         if (!botToken || !chatId) {
             throw new Error('Telegram configuration missing botToken or chatId');
         }
 
-        const endpoint = `https://api.telegram.org/bot${botToken}/sendMessage`;
-
-        const { statusCode, body } = await request(endpoint, {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: text,
-            }),
+        const endpoint = baseUrl ? `${baseUrl}/bot${botToken}/sendMessage` : `https://api.telegram.org/bot${botToken}/sendMessage`;
+        const postData = JSON.stringify({
+            chat_id: chatId,
+            text: text,
         });
 
-        if (statusCode !== 200) {
-            const responseText = await body.text();
-            throw new Error(`Telegram API returned ${statusCode}: ${responseText}`);
-        }
+        return new Promise((resolve, reject) => {
+            const urlObj = new URL(endpoint);
+            const client = urlObj.protocol === 'https:' ? https : http;
 
-        // Consume the body to free up the connection
-        await body.dump();
+            const req = client.request(endpoint, {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    'content-length': Buffer.byteLength(postData),
+                },
+            }, (res) => {
+                let responseText = '';
+                res.setEncoding('utf8');
+                res.on('data', (chunk) => {
+                    responseText += chunk;
+                });
+                res.on('end', () => {
+                    if (res.statusCode !== 200) {
+                        reject(new Error(`Telegram API returned ${res.statusCode}: ${responseText}`));
+                    } else {
+                        resolve();
+                    }
+                });
+                res.on('error', (err) => {
+                    reject(err);
+                });
+            });
+
+            req.on('error', (err) => {
+                reject(err);
+            });
+
+            req.write(postData);
+            req.end();
+        });
     }
 }
+

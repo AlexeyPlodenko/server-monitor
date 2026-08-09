@@ -2,7 +2,7 @@
 Node.js web service monitor; notifies Slack/Discord/Telegram.
 
 ## Tech Stack & Structure
-- ESM, `undici` (`src/lib/requests/JsFetch.js`), `better-sqlite3` (state). Follow `.editorconfig`.
+- ESM, native `node:http`/`node:https` modules, `better-sqlite3` (state). Follow `.editorconfig`.
 - `src/`: Core logic.
   - `lib/requests/`: Request impls (`JsFetch`).
   - `lib/validators/`: Validators (`IsStatusCode`, `HasText`, `HasMimeType`, `HasBaseUrl`, `HasLoadedWithinMs`, `IsValidXml`, `IsValidRobotsTxt`, `IsValidSitemapXml`, `IsValidWebmanifest`, `NotEmpty`).
