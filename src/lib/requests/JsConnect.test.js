@@ -52,6 +52,28 @@ describe('JsConnect', () => {
         assert.ok(typeof timings.total === 'number');
     });
 
+    it('connects using custom IP to resolve a domain', async () => {
+        const port = server.address().port;
+        // Hostname does not exist in DNS, but custom IP resolves to 127.0.0.1
+        const customUrl = `http://custom-proxy-host.test:${port}/connect-test`;
+        const connector = new JsConnect(customUrl, { ip: '127.0.0.1' });
+
+        assert.equal(connector.getIp(), '127.0.0.1');
+        assert.deepEqual(connector.getOptions(), { ip: '127.0.0.1' });
+
+        const statusCode = await connector.getResponseStatusCode$();
+        assert.equal(statusCode, 204);
+
+        const timings = connector.getTimings();
+        assert.ok(typeof timings.total === 'number');
+    });
+
+    it('supports string IP passed as options', async () => {
+        const connector = new JsConnect('http://example.com', '127.0.0.1');
+        assert.equal(connector.getIp(), '127.0.0.1');
+        assert.deepEqual(connector.getOptions(), { ip: '127.0.0.1' });
+    });
+
     it('rejects on connection failure', async () => {
         const connector = new JsConnect('http://127.0.0.1:59999/down');
         await assert.rejects(async () => {

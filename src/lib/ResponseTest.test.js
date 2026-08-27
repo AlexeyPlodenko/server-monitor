@@ -60,4 +60,36 @@ describe('ResponseTest', () => {
             }
         );
     });
+
+    it('passes ip and options to request constructor', async () => {
+        let capturedUrl = null;
+        let capturedOptions = null;
+
+        class MockRequest {
+            constructor(url, options) {
+                capturedUrl = url;
+                capturedOptions = options;
+            }
+        }
+
+        const mockValidator = {
+            setRequest: () => {},
+            isValid$: async () => true,
+            errorMessage$: async () => ''
+        };
+
+        const responseTest = new ResponseTest({
+            name: 'IP Test',
+            url: 'https://example.com',
+            ip: '1.2.3.4',
+            options: { timeout: 5000 },
+            request: MockRequest,
+            validators: [mockValidator]
+        });
+
+        await responseTest.execute$();
+
+        assert.equal(capturedUrl, 'https://example.com');
+        assert.deepEqual(capturedOptions, { ip: '1.2.3.4', timeout: 5000 });
+    });
 });

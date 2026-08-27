@@ -16,7 +16,12 @@ export default class ResponseTest {
      * @returns {Promise<void>}
      */
     async execute$() {
-        const resp = new this.#test.request(this.#test.url);
+        const options = {
+            ...(this.#test.ip ? { ip: this.#test.ip } : {}),
+            ...this.#test.options,
+            ...this.#test.requestOptions,
+        };
+        const resp = new this.#test.request(this.#test.url, options);
 
         for (const validator of this.#test.validators) {
             validator.setRequest(resp);

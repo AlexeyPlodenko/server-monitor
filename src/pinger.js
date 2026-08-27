@@ -6,7 +6,7 @@ import Storage from "./lib/Storage.js";
 import {d, info, error} from "./lib/helpers.js";
 
 /**
- * @typedef {{name: string, url: string, runEveryMs: number, request: JsFetch, validators: AbstractValidator[]}} Test
+ * @typedef {{name: string, url: string, ip?: string, options?: Object, requestOptions?: Object, runEveryMs: number, request: JsFetch, validators: AbstractValidator[]}} Test
  * @property {typeof JsFetch} request // Tells the IDE this can be "newed"
  */
 

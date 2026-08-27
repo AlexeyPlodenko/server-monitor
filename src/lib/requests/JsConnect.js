@@ -1,5 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
+import net from 'node:net';
 
 /**
  * JsConnect is a utility class for performing HTTP requests, focusing solely on the connection
@@ -10,6 +11,8 @@ import https from 'node:https';
 export default class JsConnect {
     #response;
     #url;
+    #options = {};
+    #ip = null;
     #startTime = null;
     #endTime = null;
 
@@ -30,10 +33,32 @@ export default class JsConnect {
     }
 
     /**
-     * @param {string} url
+     * @returns {string|null}
      */
-    constructor(url) {
+    getIp() {
+        return this.#ip;
+    }
+
+    /**
+     * @returns {Object}
+     */
+    getOptions() {
+        return this.#options;
+    }
+
+    /**
+     * @param {string} url
+     * @param {Object|string} [options]
+     */
+    constructor(url, options = {}) {
         this.#url = url;
+        if (typeof options === 'string') {
+            this.#options = { ip: options };
+            this.#ip = options;
+        } else if (options && typeof options === 'object') {
+            this.#options = { ...options };
+            this.#ip = options.ip || null;
+        }
     }
 
     /**
@@ -49,14 +74,34 @@ export default class JsConnect {
                 const urlObj = new URL(this.#url);
                 const client = urlObj.protocol === 'https:' ? https : http;
 
-                const req = client.request(this.#url, {
+                const requestOptions = {
                     method: 'GET',
                     headers: {
-                        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
+                        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
+                        ...(this.#options.headers || {})
                     },
-                    timeout: 30000,
+                    timeout: this.#options.timeout || 30000,
                     agent: false
-                });
+                };
+
+                if (this.#ip) {
+                    const ip = this.#ip;
+                    requestOptions.lookup = (hostname, opts, callback) => {
+                        const cb = typeof opts === 'function' ? opts : callback;
+                        const lookupOpts = typeof opts === 'object' && opts !== null ? opts : {};
+                        const family = net.isIP(ip) || 4;
+
+                        setImmediate(() => {
+                            if (lookupOpts.all) {
+                                cb(null, [{ address: ip, family }]);
+                            } else {
+                                cb(null, ip, family);
+                            }
+                        });
+                    };
+                }
+
+                const req = client.request(this.#url, requestOptions);
 
                 req.on('socket', (socket) => {
                     socket.on('lookup', () => {
