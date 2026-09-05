@@ -71,12 +71,13 @@ export default class JsFetch {
                 
                 const requestOptions = {
                     method: 'GET',
+                    agent: false,
+                    ...this.#options,
                     headers: {
                         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
                         ...(this.#options.headers || {})
                     },
                     timeout: this.#options.timeout || 30000,
-                    agent: false
                 };
 
                 if (this.#ip) {

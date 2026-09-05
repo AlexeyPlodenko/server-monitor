@@ -124,6 +124,32 @@ All validator classes are located in `src/lib/validators/` and extend `AbstractV
 | `IsValidSitemapXml` | Validates `sitemap.xml` structure (`<urlset>` or `<sitemapindex>`), `<loc>` URLs, `<lastmod>`, `<changefreq>`, and `<priority>`. | `new IsValidSitemapXml()` |
 | `IsValidWebmanifest` | Validates Web App Manifest (`site.webmanifest`) JSON format and properties. Options: `allowEmpty`, `requireName`, `requireShortName`, `requireStartUrl`, `requireIcons`. | `new IsValidWebmanifest({ requireName: true, requireIcons: true })` |
 
+### Advanced Options
+
+**Bypassing SSL Certificate Validation (e.g., Cloudflare Proxies)**
+
+When you put your website behind a proxy like Cloudflare and you want to test the origin server directly by its IP address using HTTPS, Node.js will fail with an error like this:
+
+`unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca`
+
+This happens because the origin certificate (e.g., a Cloudflare Origin CA or a self-signed certificate) is not in the trusted root store, or the IP does not match the certificate's hostname.
+
+To handle this, you can pass `requestOptions: { rejectUnauthorized: false }` to the specific test. This instructs the underlying Node.js HTTP request to skip SSL validation for that test block only.
+
+```javascript
+    {
+        name: 'example.com origin connects',
+        url: 'https://example.com',
+        ip: '203.0.113.1', // The direct origin IP
+        requestOptions: { rejectUnauthorized: false }, // Skips SSL verification
+        runEveryMs: 60000,
+        request: JsConnect,
+        validators: [
+            new HasLoadedWithinMs(1000)
+        ]
+    }
+```
+
 ## Code Stability & Testing
 
 ServerMonitor maintains high code stability and reliability standards:
