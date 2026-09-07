@@ -203,8 +203,9 @@ export default class Pinger {
                     this.#notify$(test, err.message);
                 } else if (err instanceof Error) {
                     // Catch any other Error, including timeout errors
-                    error(err.message);
-                    this.#notify$(test, err.message);
+                    const message = Pinger.formatErrorMessage(test, err);
+                    error(message);
+                    this.#notify$(test, message);
                 } else {
                     throw err; // Re-throw if it's not an Error object
                 }
@@ -217,6 +218,18 @@ export default class Pinger {
         this.#stateSaveInterval = setInterval(() => this.saveState$(), stateSaveIntervalMs);
 
         return this;
+    }
+
+    /**
+     * Formats runtime/network error messages to match the validation failure pattern.
+     *
+     * @param {Test} test
+     * @param {Error} err
+     * @returns {string}
+     */
+    static formatErrorMessage(test, err) {
+        const code = err.code ? ` (code: ${err.code})` : '';
+        return `Test "${test.name}" failed for the URL "${test.url}". ${err.message || 'Unknown error'}${code}`;
     }
 
     /**
